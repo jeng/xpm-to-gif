@@ -15,6 +15,7 @@
 ;; hefner's version of make-lookup-table. It is nice and clean.
 ;; http://paste.lisp.org/display/33147#4
 (defun make-lookup-table (args)
+  "Make a hash table initialized with the list of key value pairs passed."
   (reduce (lambda (hash foo)
             (setf (gethash (first foo) hash) (second foo))
             hash)
@@ -22,6 +23,7 @@
           :initial-value (make-hash-table :test #'equal)))
 
 (defun x11-rgb-string (color-name)
+  "Look for the rgb color of the color name supplied."
   (gethash color-name *x11-rgb-color-table*))
 
 (defvar *x11-rgb-color-table*

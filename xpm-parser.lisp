@@ -64,27 +64,35 @@
     :x-hotspot nil
     :y-hotspot nil)
   (:documentation
-   "Parse an xpm file. Color table is a hash that lets you look up the
-rgb color for a character.  Data is a character stream of the raw xpm data"))
+   "Parse an xpm file. The color tables are hashes that lets you look
+up the value set for a character.  Data is a character stream of the
+raw xpm data"))
 
 (defun expected (s)
+  "Throws an error stating that s was expected"
   (error (format nil "~a expected" s)))
 
 (defun match (reader x)
+  "If the current symbol of the reader does not match x throw an
+error"
   (if (char= x (sym reader))
       (next reader)
       (expected (format nil "~a" x))))
 
 (defun is-white (char)
+  "Check to see if the character passed is considered white space.
+This only works for ASCII values."
   (if (characterp char)
       (char<= char #\space)
       nil))
 
 (defun skip-white (reader)
+  "Skip over white spaces in the reader."
   (loop while (is-white (sym reader))
         do (next reader)))
 
 (defun xpm-number (reader)
+  "Parse a number from the reader and return a integer."
   (if (digit-char-p (sym reader))
       (let ((w (collect-until
                 reader
@@ -98,6 +106,7 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
 ;; Color names can be seperated by a space. This means we can not use
 ;; a simple single lookahead parser.
 (defun xpm-color-name (reader)
+  "Parses the color name from the xpm color table."
   (if (or (alpha-char-p (sym reader))
           (char= (sym reader) #\_)
           (char= (sym reader) #\#)
@@ -126,6 +135,7 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
       (error (format nil "Invalid color name. Symbol = ~s" (sym reader)))))
 
 (defun xpm-word (reader)
+  "Get the next word from the reader."
   (if (or (alpha-char-p (sym reader)) (char= (sym reader) #\_))
       (let ((w (collect-until
                 reader
@@ -138,6 +148,7 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
       (error (format nil "Invalid word. Symbol = ~s" (sym reader)))))
 
 (defmethod xpm-comment ((xpm xpm-parser) reader)
+  "Advance over a c style comment in the reader."
   (match reader #\/)
   (match reader #\*)
   (let ((old (sym reader)))
@@ -147,6 +158,8 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
   (match reader #\/))
 
 (defmethod xpm-declaration ((xpm xpm-parser) reader)
+  "Parses the declaration section of the xpm data and sets the
+variable name."
   (let ((char (xpm-word reader)))
     (if (string-equal char "char")
         (progn
@@ -161,6 +174,9 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
         (error "Invalid xpm file. The declaration is wrong"))))
 
 (defmethod xpm-values ((xpm xpm-parser) reader)
+  "The values section of the xpm data contains the width, height,
+number of colors, characters per pixel and optionally the x and y
+hotspots."
   (match reader #\")
   (skip-white reader)
   (setf (width xpm) (xpm-number reader))
@@ -174,6 +190,8 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
   (match reader #\"))
 
 (defmethod pixel-reader ((xpm xpm-parser) reader)
+  "Read in the number of characters that make up a pixel. Characters
+per pixels is defined in the values section."
   (let* ((idx 0)
          (chars
           (collect-until
@@ -185,6 +203,8 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
     chars))
 
 (defmethod parse-color-pair ((xpm xpm-parser) hash-key reader)
+  "Get the key and color from the colors section of the xpm data and
+store them to the correct hash."
   (let* ((key (xpm-word reader))
          (color (xpm-color-name reader))
          (hash
@@ -199,6 +219,7 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
   (skip-white reader))
 
 (defmethod xpm-colors ((xpm xpm-parser) reader)
+  "Parse all key color pairs found in a sting of the colors section"
   (match reader #\")
   (let* ((chars (pixel-reader xpm reader)))
     (skip-white reader)
@@ -207,6 +228,8 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
     (match reader #\")))
 
 (defmethod xpm-pixels ((xpm xpm-parser) reader)
+  "Read in all of the pixels from the pixels section of the xpm file
+and store then in the data slot."
   (match reader #\")
   (loop until (char= (sym reader) #\") do
         (let ((pixel (pixel-reader xpm reader)))
@@ -215,6 +238,8 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
   (match reader #\"))
 
 (defmethod xpm-string ((xpm xpm-parser) reader)
+  "Based on the string-state determine what to do with a string found
+in the xpm data."
   (cond
     ((equal (string-state xpm) 'values)
      (xpm-values xpm reader)
@@ -231,6 +256,8 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
      (xpm-pixels xpm reader))))
 
 (defmethod xpm-main ((xpm xpm-parser) reader)
+  "The main parsing method. Calls the correction function based on the
+readers symbol."
   (loop until (or (null (sym reader)) (char= (sym reader) #\})) do
         (skip-white reader)
         (cond
@@ -245,16 +272,20 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
         (skip-white reader)))
 
 (defmethod parse-xpm-file ((xpm xpm-parser) file-name)
+  "Parse the file given feeling up the slots of xpm-parser."
   (setf (string-state xpm) 'values)
     (with-open-file (stream file-name)
       (let ((reader (define-stream-reader stream)))
         (xpm-main xpm reader))))
 
 (defmethod parse-xpm-string ((xpm xpm-parser) str)
+  "Define a reader passed on the string passed and parse it."
   (let ((reader (define-string-reader str)))
     (xpm-main xpm reader)))
 
 #|
+
+;;;Testing code.
 
 (defmacro test-xpm-parser (str xpm-name reader-name &body body)
   `(let ((,xpm-name (make-instance 'xpm-parser))

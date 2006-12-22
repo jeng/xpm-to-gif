@@ -17,24 +17,32 @@
 (defclass xpm-reader (xpm-parser)  ())
 
 (defmethod pixel-key ((xpm xpm-reader) x y)
+  "Treats the xpm data as a 2 dimension array with the origin in the
+top left hand corner. It returns the pixel at the givin location."
   (elt (data xpm) (+ (* y (width xpm)) x)))
 
 (defmethod color ((xpm xpm-reader) key)
+  "Returns the entry from the color table for a given pixel-key"
   (gethash key (color-table xpm)))
 
 (defmethod mono ((xpm xpm-reader) key)
+  "Returns the entry from the mono table for a given pixel-key"
   (gethash key (mono-table xpm)))
 
 (defmethod grayscale-four ((xpm xpm-reader) key)
+  "Returns the entry from the four level grayscale table for a given pixel-key"
   (gethash key (level-four-grayscale-table xpm)))
 
 (defmethod grayscale ((xpm xpm-reader) key)
+  "Returns the entry from the grayscale table for a given pixel-key"
   (gethash key (grayscale-table xpm)))
 
 (defmethod symbolic ((xpm xpm-reader) key)
+  "Returns the entry from the symbolic table for a given pixel-key"
   (gethash key (symbolic-table xpm)))
 
 (defun color-type (color)
+  "Returns rgb hsv or name based on the type of color string passed."
   (unless (> (length color) 0) (error "Invalid color"))
   (let ((lk (elt color 0)))
     (cond
@@ -43,6 +51,9 @@
       (t 'name))))
 
 (defun parse-color-string (color type first-char)
+  "Generic function for parsing color strings. Type is the type of
+color string you are parsing and first-char is the mandatory start of
+this color string"
   (unless (>= (length color) 7)
     (error (format nil "Invalid ~a color. Bad length" type)))
   (let ((lk (elt color 0)))
@@ -59,9 +70,11 @@
     (format nil "#x~a" (subseq color 5 7)))))
 
 (defun parse-rgb (color)
+  "Parse a rgb color string and return the red, green and blue values."
   (parse-color-string color "RGB" #\#))
 
 (defun parse-hsv (color)
+  "Parse a HSV color string and return the Hue, Saturation and Value."
   (parse-color-string color "HSV" #\%))
 
 ;;Taken from:
@@ -85,6 +98,7 @@
           (5 (values v p q))))))
 
 (defun make-xpm-reader (file-name)
+  "Make an xpm reader out of the xpm file given"
   (let ((xpm (make-instance 'xpm-reader)))
     (parse-xpm-file xpm file-name)
     xpm))
