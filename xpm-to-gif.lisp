@@ -12,14 +12,26 @@
 
 (in-package :xpm-to-gif)
 
+(defun rgb-color-string (color)
+  (if (string-equal color "none")
+      color
+      (let* ((color-type (color-type color))
+             (color-string
+              (if (equal color-type 'rgb)
+                  color
+                  (if (equal color-type 'name)
+                      (x11-rgb-string color)
+                      nil))))
+        color-string)))
+
 (defun xpm-to-canvas (xpm color-table &key (none-color 0))
   "Takes an xpm reader and return a skippy canvas and color-table"
   (let ((canvas (make-canvas :height (height xpm) :width (width xpm))))
     (loop for y from 0 to (1- (height xpm)) do
           (loop for x from 0 to (1- (width xpm)) do
-                (let* ((color (color xpm (pixel-key xpm x y)))
-                       (color-type (color-type color)))
-                  (if (equal color-type 'rgb)
+                (let ((color
+                       (rgb-color-string (color xpm (pixel-key xpm x y)))))
+                  (if (equal (color-type color) 'rgb)
                       (multiple-value-bind (r g b)
                           (parse-rgb color)
                         (let ((c-index

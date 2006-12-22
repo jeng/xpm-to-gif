@@ -40,7 +40,13 @@
    (x-hotspot :accessor x-hotspot
               :initarg :x-hotspot)
    (y-hotspot :accessor y-hotspot
-              :initarg :y-hotspot))
+              :initarg :y-hotspot)
+   (string-state :accessor string-state
+                 :initarg :string-state)
+   (color-count :accessor color-count
+                :initarg :color-count)
+   (data-index :accessor data-index
+               :initarg :data-index))
   (:default-initargs
     :variable-name ""
     :color-table (make-hash-table :test #'equal)
@@ -53,6 +59,8 @@
     :height 0
     :number-colors 0
     :characters-per-pixel 0
+    :color-count 0
+    :string-state 'values
     :x-hotspot nil
     :y-hotspot nil)
   (:documentation
@@ -87,21 +95,34 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
         (parse-integer w))
       (error (format nil "Invalid number. Symbol = ~s" (sym reader)))))
 
+;; Color names can be seperated by a space. This means we can not use
+;; a simple single lookahead parser.
 (defun xpm-color-name (reader)
   (if (or (alpha-char-p (sym reader))
           (char= (sym reader) #\_)
           (char= (sym reader) #\#)
           (char= (sym reader) #\%))
-      (let ((w (collect-until
-                reader
-                #'(lambda (char)
-                    (not
-                     (or (alphanumericp char)
-                         (char= char #\_)
-                         (char= char #\#)
-                         (char= char #\%)))))))
-        (skip-white reader)
-        w)
+      (let ((name "")
+            (prev-char #\0))
+        (loop do
+              (when (char= (sym reader) #\") (return))
+              (when (is-white prev-char)
+                (let ((c (sym reader)))
+                  (when (or (char= c #\c)
+                            (char= c #\s)
+                            (char= c #\g)
+                            (char= c #\m))
+                    (next reader)
+                    (if (or (char= (sym reader) #\space)
+                            (and (char= c #\g) (char= (sym reader) #\4)))
+                        (progn
+                          (undo-next reader)
+                          (return))
+                        (undo-next reader)))))
+              (setf prev-char (sym reader))
+              (setf name (format nil "~a~a" name (sym reader)))
+              (next reader))
+        (string-trim '(#\space) name))
       (error (format nil "Invalid color name. Symbol = ~s" (sym reader)))))
 
 (defun xpm-word (reader)
@@ -119,10 +140,10 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
 (defmethod xpm-comment ((xpm xpm-parser) reader)
   (match reader #\/)
   (match reader #\*)
-  (collect-until
-   reader
-   #'(lambda (char) (char= char #\*)))
-  (match reader #\*)
+  (let ((old (sym reader)))
+    (loop until (and (char= old #\*) (char= (sym reader) #\/)) do
+          (setf old (sym reader))
+          (next reader)))
   (match reader #\/))
 
 (defmethod xpm-declaration ((xpm xpm-parser) reader)
@@ -150,10 +171,7 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
     (setf (x-hotspot xpm) (xpm-number reader)))
   (unless (char= #\" (sym reader))
     (setf (y-hotspot xpm) (xpm-number reader)))
-  (match reader #\")
-  (skip-white reader)
-  (match reader #\,)
-  (skip-white reader))
+  (match reader #\"))
 
 (defmethod pixel-reader ((xpm xpm-parser) reader)
   (let* ((idx 0)
@@ -180,64 +198,161 @@ rgb color for a character.  Data is a character stream of the raw xpm data"))
     (setf (gethash hash-key hash) color))
   (skip-white reader))
 
-(defmethod parse-color-line ((xpm xpm-parser) reader)
+(defmethod xpm-colors ((xpm xpm-parser) reader)
   (match reader #\")
   (let* ((chars (pixel-reader xpm reader)))
-    (format t "chars ~S" chars)
     (skip-white reader)
     (loop until (char= #\" (sym reader)) do
           (parse-color-pair xpm chars reader))
-    (match reader #\")
-    (skip-white reader)
-    (match reader #\,)
-    (skip-white reader)))
-
-(defmethod xpm-colors ((xpm xpm-parser) reader)
-  (loop for i from 1 to (number-colors xpm) do
-        (when (char= (sym reader) #\/) (xpm-comment xpm reader))
-        (parse-color-line xpm reader)))
+    (match reader #\")))
 
 (defmethod xpm-pixels ((xpm xpm-parser) reader)
   (match reader #\")
-  (setf (data xpm) (make-array (1+ (* (width xpm) (height xpm)) )))
-  (let ((idx 0))
-    (loop until (null (sym reader)) do
-          (if (char= (sym reader) #\")
-              (progn
-                (match reader #\")
-                (skip-white reader)
-                (if (char= (sym reader) #\})
-                    (progn
-                      (match reader #\})
-                      (skip-white reader)
-                      (match reader #\;))
-                    (progn
-                      (match reader #\,)
-                      (skip-white reader)
-                      (match reader #\"))))
-              (let ((pixel (pixel-reader xpm reader)))
-                (setf (elt (data xpm) idx) pixel)
-                (incf idx))))
-    (format t "idx = ~a" idx)))
+  (loop until (char= (sym reader) #\") do
+        (let ((pixel (pixel-reader xpm reader)))
+          (setf (elt (data xpm) (data-index xpm)) pixel)
+          (incf (data-index xpm))))
+  (match reader #\"))
 
 (defmethod xpm-string ((xpm xpm-parser) reader)
-  (xpm-values xpm reader)
-  (when (char=  #\/ (sym reader)) (xpm-comment xpm reader))
-  (xpm-colors xpm reader)
-  (when (char=  #\/ (sym reader)) (xpm-comment xpm reader))
-  (xpm-pixels xpm reader))
+  (cond
+    ((equal (string-state xpm) 'values)
+     (xpm-values xpm reader)
+     (setf (data xpm) (make-array (* (width xpm) (height xpm))))
+     (setf (string-state xpm) 'colors)
+     (setf (color-count xpm) (number-colors xpm)))
+    ((equal (string-state xpm) 'colors)
+     (xpm-colors xpm reader)
+     (decf (color-count xpm))
+     (when (zerop (color-count xpm))
+       (setf (string-state xpm) 'pixel)
+       (setf (data-index xpm) 0)))
+    ((equal (string-state xpm) 'pixel)
+     (xpm-pixels xpm reader))))
+
+(defmethod xpm-main ((xpm xpm-parser) reader)
+  (loop until (or (null (sym reader)) (char= (sym reader) #\})) do
+        (skip-white reader)
+        (cond
+          ((char= (sym reader) #\/) (xpm-comment xpm reader))
+          ((char= (sym reader) #\") (xpm-string xpm reader))
+          ((char= (sym reader) #\,) (match reader #\,))
+          (t
+           (let ((s (xpm-word reader)))
+             (if (string-equal s "static")
+                 (xpm-declaration xpm reader)
+                 (error "Invalid xpm file.")))))
+        (skip-white reader)))
 
 (defmethod parse-xpm-file ((xpm xpm-parser) file-name)
+  (setf (string-state xpm) 'values)
     (with-open-file (stream file-name)
       (let ((reader (define-stream-reader stream)))
-        (loop until (null (sym reader)) do
-              (skip-white reader)
-              (cond
-                ((char= (sym reader) #\/) (xpm-comment xpm reader))
-                ((char= (sym reader) #\") (xpm-string xpm reader))
-                (t
-                 (let ((s (xpm-word reader)))
-                   (if (string-equal s "static")
-                       (xpm-declaration xpm reader)
-                       (error "Invalid xpm file.")))))))))
+        (xpm-main xpm reader))))
 
+(defmethod parse-xpm-string ((xpm xpm-parser) str)
+  (let ((reader (define-string-reader str)))
+    (xpm-main xpm reader)))
+
+#|
+
+(defmacro test-xpm-parser (str xpm-name reader-name &body body)
+  `(let ((,xpm-name (make-instance 'xpm-parser))
+         (,reader-name (define-string-reader ,str)))
+    ,@body))
+
+(defun test-xpm-declaration ()
+  (test-xpm-parser (format nil "/* XPM */~%static char *foo[] = {") xpm reader
+    (xpm-main xpm reader)
+    (assert (string= (variable-name xpm) "foo"))))
+
+(defun test-xpm-values ()
+  (test-xpm-parser "\"50 100 5 2\"" xpm reader
+    (xpm-string xpm reader)
+    (assert (= (width xpm) 50))
+    (assert (= (height xpm) 100))
+    (assert (= (number-colors xpm) 5))
+    (assert (= (characters-per-pixel xpm) 2))
+    (assert (null (x-hotspot xpm)))
+    (assert (null (y-hotspot xpm))))
+
+  (test-xpm-parser "\"50 100 5 2 3 4\"" xpm reader
+    (xpm-string xpm reader)
+    (assert (= (width xpm) 50))
+    (assert (= (height xpm) 100))
+    (assert (= (number-colors xpm) 5))
+    (assert (= (characters-per-pixel xpm) 2))
+    (assert (= (x-hotspot xpm) 3))
+    (assert (= (y-hotspot xpm) 4))))
+
+(defun test-xpm-colors ()
+  (test-xpm-parser
+      (format nil "\"# c #456677 s yow \",~%/*funky stuff*/\"^ c #ffeeff m #eeeeee\"/* is here*/,~%/* MOre stuff here */\"+ c %213466\"~%\":      c sandy brown\"~%\"   s None  c None\"") xpm reader
+    (setf (string-state xpm) 'colors)
+    (setf (number-colors xpm) 5)
+    (setf (color-count xpm) (number-colors xpm))
+    (setf (characters-per-pixel xpm) 1)
+    (xpm-main xpm reader)
+    (assert (string= (gethash "#" (color-table xpm)) "#456677"))
+    (assert (string= (gethash "#" (symbolic-table xpm)) "yow"))
+    (assert (string= (gethash "^" (color-table xpm)) "#ffeeff"))
+    (assert (string= (gethash "^" (mono-table xpm)) "#eeeeee"))
+    (assert (string= (gethash "+" (color-table xpm)) "%213466"))
+    (assert (string= (gethash ":" (color-table xpm)) "sandy brown"))
+    (assert (string= (gethash " " (color-table xpm)) "None"))
+    (assert (equal (string-state xpm) 'pixel))
+    (assert (zerop (color-count xpm)))))
+
+(defun test-xpm-file ()
+  (test-xpm-parser
+      (format nil
+"/* XPM */
+static char *noname[] = {
+/* width height ncolors chars_per_pixel */
+\"9 13 2 1\",
+/* colors */
+\"` c None    s ledbg\",
+\"a c #CA1E1C s ledfg\",
+/* pixels */
+\"`````````\",
+\"````aaaaa\",
+\"```a````a\",
+\"```a````a\",
+\"``a````a`\",
+\"``a````a`\",
+\"`````````\",
+\"`a````a``\",
+\"`a````a``\",
+\"a````a```\",
+\"a````a```\",
+\"aaaaa````\",
+\"`````````\"
+};") xpm reader
+    (let ((data "`````````````aaaaa```a````a```a````a``a````a```a````a```````````a````a```a````a``a````a```a````a```aaaaa`````````````"))
+      (xpm-main xpm reader)
+      (print (variable-name xpm))
+      (assert (string= (variable-name xpm) "noname"))
+      (assert (= (width xpm) 9))
+      (assert (= (height xpm) 13))
+      (assert (= (number-colors xpm) 2))
+      (assert (= (characters-per-pixel xpm) 1))
+      (assert (string= (gethash "`" (color-table xpm)) "None"))
+      (assert (string= (gethash "a" (color-table xpm)) "#CA1E1C"))
+      (assert (string= (gethash "`" (symbolic-table xpm)) "ledbg"))
+      (assert (string= (gethash "a" (symbolic-table xpm)) "ledfg"))
+      (print (length (data xpm)))
+      (print (* (width xpm) (height xpm)))
+      (assert (= (length (data xpm)) (* (width xpm) (height xpm))))
+      (loop for pixel across (data xpm)
+            for i from 0 do
+            (assert (string=
+                     pixel
+                     (format nil "~a" (elt data i))))))))
+
+(defun test-xpm-comments ()
+  (test-xpm-parser "/**/" xpm reader
+    (xpm-main xpm reader))
+  (test-xpm-parser "/********/" xpm reader
+    (xpm-main xpm reader)))
+
+|#

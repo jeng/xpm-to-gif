@@ -12,23 +12,34 @@
 
 (in-package :xpm-to-gif)
 
-(defmacro define-reader (source reader)
-  (let ((sym (gensym)))
-    `(let ((,sym (,reader ,source)))
+(defmacro define-reader (source reader peeker unreader)
+  (let ((sym (gensym))
+        (prev-sym (gensym)))
+    `(let ((,prev-sym nil)
+           (,sym (,reader ,source)))
       (list
        ;Get the current symbol
        (lambda () ,sym)
        ;Move to the next symbol
        (lambda ()
+         (setf ,prev-sym ,sym)
          (setf ,sym (,reader ,source)))
        ;Return the source
-       (lambda () ,source)))))
+       (lambda () ,source)
+       ;Peek the source
+       (lambda () (,peeker ,source))
+       ;unread the source
+       (lambda ()
+         (when (null ,prev-sym) (error "No previous symbol found"))
+         (setf ,sym ,prev-sym)
+         (setf ,prev-sym nil)
+         (,unreader ,sym ,source))))))
 
 (defun define-list-reader (ls)
-  (define-reader ls pop))
+  (define-reader ls pop car push))
 
 (defun define-stream-reader (stream)
-  (define-reader stream read-char-end-of-file-nil))
+  (define-reader stream read-char-end-of-file-nil peek-char unread-char))
 
 (defun define-string-reader (string)
   (define-stream-reader
@@ -48,6 +59,12 @@ an error."
 
 (defun source (reader)
   (funcall (third reader)))
+
+(defun peek (reader)
+  (funcall (fourth reader)))
+
+(defun undo-next (reader)
+  (funcall (fifth reader)))
 
 (defun collect-until (reader until-function)
   "Collect all characters into a string until the until-function

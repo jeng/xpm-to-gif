@@ -19,6 +19,7 @@
   :serial t
   :components ((:file "package")
                (:file "closure-reader")
+               (:file "x11-rgb")
                (:file "xpm-parser")
                (:file "xpm-reader")
                (:file "xpm-to-gif")))

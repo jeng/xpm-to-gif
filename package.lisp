@@ -24,4 +24,7 @@
    #:symbolic
    #:color-type
    #:parse-rgb
-   #:make-xpm-reader))
+   #:parse-hsv
+   #:hsv->rgb
+   #:make-xpm-reader
+   #:x11-rgb-string))
