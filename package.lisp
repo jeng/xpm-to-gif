@@ -15,16 +15,4 @@
   (:use "COMMON-LISP" "SKIPPY")
   (:export
    #:xpm-file-to-gif
-   #:xpm-to-canvas
-   #:xpm-file-to-canvas
-   #:color
-   #:mono
-   #:grayscale-four
-   #:grayscale
-   #:symbolic
-   #:color-type
-   #:parse-rgb
-   #:parse-hsv
-   #:hsv->rgb
-   #:make-xpm-reader
-   #:x11-rgb-string))
+   #:xpm-file-to-canvas))

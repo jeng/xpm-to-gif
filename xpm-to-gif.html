@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html> 
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <title>XPM-TO-GIF - a cool library</title>
+  <style type="text/css">
+  pre { padding:5px; background-color:#e0e0e0 }
+  h3, h4 { text-decoration: underline; }
+  a { text-decoration: none; }
+  a.noborder { border:0px }
+  a.noborder:hover { border:0px }  a.none { border:1px solid white; }
+  a.none { border:1px solid white; }
+  a.none:hover { border:1px solid white; }
+  a { border:1px solid white; }
+  a:hover   { border: 1px solid black; } 
+  a.noborder { border:0px }
+  a.noborder:hover { border:0px }
+  </style>
+</head>
+
+<body bgcolor=white>
+
+<h2> XPM-TO-GIF - a cool library</h2>
+
+<blockquote>
+<br>&nbsp;<br><h3><a name=abstract class=none>Abstract</a></h3>
+
+The code comes with
+a <a
+href="http://www.opensource.org/licenses/bsd-license.php">BSD-style
+license</a> so you can basically do with it whatever you want.
+
+<p>
+<font color=red>Download shortcut:</font> <a href="http://weitz.de/files/xpm-to-gif.tar.gz">http://weitz.de/files/xpm-to-gif.tar.gz</a>.
+</blockquote>
+
+<br>&nbsp;<br><h3><a class=none name="contents">Contents</a></h3>
+<ol>
+  <li><a href="#download">Download</a>
+  <li><a href="#dictionary">The XPM-TO-GIF dictionary</a>
+    <ol>
+      <li><a href="#xpm-file-to-canvas"><code>xpm-file-to-canvas</code></a>
+      <li><a href="#xpm-file-to-gif"><code>xpm-file-to-gif</code></a>
+    </ol>
+  <li><a href="#ack">Acknowledgements</a>
+</ol>
+
+<br>&nbsp;<br><h3><a class=none name="download">Download</a></h3>
+
+XPM-TO-GIF together with this documentation can be downloaded from <a
+href="http://weitz.de/files/xpm-to-gif.tar.gz">http://weitz.de/files/xpm-to-gif.tar.gz</a>. The
+current version is 0.1.0.
+
+<br>&nbsp;<br><h3><a class=none name="dictionary">The XPM-TO-GIF dictionary</a></h3>
+
+
+
+<!-- Entry for XPM-FILE-TO-CANVAS -->
+
+<p><br>[Function]<br><a class=none name='xpm-file-to-canvas'><b>xpm-file-to-canvas</b> <i>file-name color-table <tt>&amp;key</tt> none-color</i> =&gt; <i>result</i></a>
+<blockquote><br>
+
+Takes a gif file name, color-table and a optional none-color.  The
+none-color is the color you want to use for xpm colors set to None. A
+skippy canvas is returned.
+
+</blockquote>
+
+<!-- End of entry for XPM-FILE-TO-CANVAS -->
+
+
+<!-- Entry for XPM-FILE-TO-GIF -->
+
+<p><br>[Function]<br><a class=none name='xpm-file-to-gif'><b>xpm-file-to-gif</b> <i>input-file output-file <tt>&amp;key</tt> none-color</i> =&gt; <i>result</i></a>
+<blockquote><br>
+
+Takes the name of a gif input file, xpm output file and a optional
+none-color. The none-color is the color you want to use for xpm colors
+set to None.
+
+</blockquote>
+
+<!-- End of entry for XPM-FILE-TO-GIF -->
+
+
+<br>&nbsp;<br><h3><a class=none name="ack">Acknowledgements</a></h3>
+
+<p>
+This documentation was prepared with <a href="http://weitz.de/documentation-template/">DOCUMENTATION-TEMPLATE</a>.
+</p>
+<p>
+$Header: /usr/local/cvsrep/documentation-template/output.lisp,v 1.9 2006/08/26 21:16:44 edi Exp $
+<p><a href="http://weitz.de/index.html">BACK TO MY HOMEPAGE</a>
+
+</body>
+</html>

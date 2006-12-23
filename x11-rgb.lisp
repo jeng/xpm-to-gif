@@ -22,10 +22,6 @@
           args
           :initial-value (make-hash-table :test #'equal)))
 
-(defun x11-rgb-string (color-name)
-  "Look for the rgb color of the color name supplied."
-  (gethash color-name *x11-rgb-color-table*))
-
 (defvar *x11-rgb-color-table*
   (make-lookup-table
     '(("snow" "#fffafa")
@@ -781,3 +777,7 @@
       ("light green" "#90ee90")
       ("LightGreen" "#90ee90"))))
 
+
+(defun x11-rgb-string (color-name)
+  "Look for the rgb color of the color name supplied."
+  (gethash color-name *x11-rgb-color-table*))
