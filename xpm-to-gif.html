@@ -3,7 +3,7 @@
 
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-  <title>XPM-TO-GIF - a cool library</title>
+  <title>XPM-TO-GIF - Convert xpm files to gifs.</title>
   <style type="text/css">
   pre { padding:5px; background-color:#e0e0e0 }
   h3, h4 { text-decoration: underline; }
@@ -21,23 +21,33 @@
 
 <body bgcolor=white>
 
-<h2> XPM-TO-GIF - a cool library</h2>
+<h2> XPM-TO-GIF - Convert xpm files to gifs.</h2>
 
 <blockquote>
 <br>&nbsp;<br><h3><a name=abstract class=none>Abstract</a></h3>
+<p><a
+href="http://koala.ilog.fr/ftp/pub/xpm/xpm-3-paper.ps.gz">XPM</a> is a
+image format in which the image's data is represented using text. XPM
+files are commonly used as a simple way to load graphics into C
+programs. </p>
+<p>This complete XPM library, with the help of <a href="http://www.xach.com/lisp/skippy/">SKIPPY</a>, will let you convert XPM
+files directly to GIFs.  Also, and this is where the real fun comes
+in, you can load your XPM files to a SKIPPY canvas and create animated
+GIFs.</p>
 
-The code comes with
-a <a
+The code comes
+with a <a
 href="http://www.opensource.org/licenses/bsd-license.php">BSD-style
-license</a> so you can basically do with it whatever you want.
+license</a> so you can do with it whatever you want.
 
 <p>
-<font color=red>Download shortcut:</font> <a href="http://weitz.de/files/xpm-to-gif.tar.gz">http://weitz.de/files/xpm-to-gif.tar.gz</a>.
+<font color=red>Download shortcut:</font> <a href="http://www.jeremyenglish.org/packs/xpm-to-gif.tar.gz">http://www.jeremyenglish.org/packs/xpm-to-gif.tar.gz</a>.
 </blockquote>
 
 <br>&nbsp;<br><h3><a class=none name="contents">Contents</a></h3>
 <ol>
   <li><a href="#download">Download</a>
+  <li><a href="#examples">Examples</a>
   <li><a href="#dictionary">The XPM-TO-GIF dictionary</a>
     <ol>
       <li><a href="#xpm-file-to-canvas"><code>xpm-file-to-canvas</code></a>
@@ -49,8 +59,46 @@ license</a> so you can basically do with it whatever you want.
 <br>&nbsp;<br><h3><a class=none name="download">Download</a></h3>
 
 XPM-TO-GIF together with this documentation can be downloaded from <a
-href="http://weitz.de/files/xpm-to-gif.tar.gz">http://weitz.de/files/xpm-to-gif.tar.gz</a>. The
+href="http://www.jeremyenglish.org/packs/xpm-to-gif.tar.gz"> http://www.jeremyenglish.org/packs/xpm-to-gif.tar.gz</a>. The
 current version is 0.1.0.
+
+<a name="examples"><h3>Examples</h3></a>
+
+<pre>
+<img align=right src="ghost-walk.gif" border=1
+>
+(defun walk-ghost (output-file)
+  (let* ((color-table (make-color-table))
+         (red-ghost-1
+          (canvas-image
+           (xpm-file-to-canvas
+            #p"ghost-r2.xpm"
+            color-table)))
+         (red-ghost-2
+          (canvas-image
+           (xpm-file-to-canvas
+            #p"ghost-r1.xpm"
+            color-table)))
+         (data-stream (make-data-stream :height 100
+                                        :width 384
+                                        :color-table color-table)))
+      (dotimes (i 74)
+        (let ((image (make-image
+                      :height (height red-ghost-1)
+                      :width (width red-ghost-1)
+                      :delay-time 5
+                      :image-data (if (zerop (mod i 2))
+                                      (image-data red-ghost-1)
+                                    (image-data red-ghost-2))
+                      :transparency-index (ensure-color 0  color-table)
+                      :disposal-method :restore-previous
+                      :top-position 18
+                      :left-position (* 5 i))))
+          (add-image image data-stream)))
+      (setf (loopingp data-stream) t)
+      (output-data-stream data-stream output-file)))
+
+</pre>
 
 <br>&nbsp;<br><h3><a class=none name="dictionary">The XPM-TO-GIF dictionary</a></h3>
 
@@ -61,9 +109,7 @@ current version is 0.1.0.
 <p><br>[Function]<br><a class=none name='xpm-file-to-canvas'><b>xpm-file-to-canvas</b> <i>file-name color-table <tt>&amp;key</tt> none-color</i> =&gt; <i>result</i></a>
 <blockquote><br>
 
-Takes a gif file name, color-table and a optional none-color.  The
-none-color is the color you want to use for xpm colors set to None. A
-skippy canvas is returned.
+The none-color is the color that is used in place of XPM's transparent color.
 
 </blockquote>
 
@@ -75,9 +121,9 @@ skippy canvas is returned.
 <p><br>[Function]<br><a class=none name='xpm-file-to-gif'><b>xpm-file-to-gif</b> <i>input-file output-file <tt>&amp;key</tt> none-color</i> =&gt; <i>result</i></a>
 <blockquote><br>
 
-Takes the name of a gif input file, xpm output file and a optional
-none-color. The none-color is the color you want to use for xpm colors
-set to None.
+Takes the name of a gif input file, XPM output file and a optional
+none-color.  The none-color is the color that is used in place of
+XPM's transparent color.
 
 </blockquote>
 
@@ -89,9 +135,8 @@ set to None.
 <p>
 This documentation was prepared with <a href="http://weitz.de/documentation-template/">DOCUMENTATION-TEMPLATE</a>.
 </p>
-<p>
-$Header: /usr/local/cvsrep/documentation-template/output.lisp,v 1.9 2006/08/26 21:16:44 edi Exp $
-<p><a href="http://weitz.de/index.html">BACK TO MY HOMEPAGE</a>
+
+<a href="http://www.jeremyenglish.org/">BACK TO MY HOMEPAGE</a>
 
 </body>
 </html>
